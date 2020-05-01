@@ -6,39 +6,33 @@ import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.util.Units;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
 import org.apache.poi.xwpf.usermodel.*;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.*;
 
 public class Main {
-    static String FILE_ERROR = "ChekFold/error.txt";
-    
+    static String FILE_ERROR = "CheckFold/error.txt";
+    static Map<Integer, String> listNameHeadsInMap = new HashMap<>();
+
     public static void main(String[] args) throws IOException {
         System.out.println("Program start!");
+        addErrorInFile(new Date() + "\n", false);
+//        FileWriter fileEr = new FileWriter(FILE_ERROR, true);
+//        fileEr.write(new Date() + "\n");
+//        fileEr.close();
         readXLSX();
-
-    }
-
-    private static String getCellName(Cell cell) {
-        return CellReference.convertNumToColString(cell.getColumnIndex()) + (cell.getRowIndex() + 1);
     }
 
     private static void readXLSX() throws IOException {
-        String path = "ChekFold/data.xlsx";
+        String path = "CheckFold/data.xlsx";
         FileInputStream excelFile = null;
         try {
             excelFile = new FileInputStream(new File(path));
         } catch (FileNotFoundException e) {
-            addErrorInFile("- Файл " + path + " не найден");
+            addErrorInFile("- Файл " + path + " не найден", true);
             e.printStackTrace();
         }
         XSSFWorkbook workbook = new XSSFWorkbook(excelFile);
@@ -53,13 +47,15 @@ public class Main {
             System.out.println(currentRow.getRowNum());
             while (cellIterator.hasNext()) {
                 Cell currentCell = (Cell) cellIterator.next();
-                System.out.println( "first: " + getCellName(currentCell));
                 if (currentCell.getCellType() == CellType.STRING) {
                     row.add(currentCell.getStringCellValue());
                     System.out.print(currentCell.getStringCellValue() + "--");
                 } else if (currentCell.getCellType() == CellType.NUMERIC) {
                     row.add(currentCell.getStringCellValue());
                     System.out.print(currentCell.getNumericCellValue() + "--");
+                }
+                if (!cellIterator.hasNext() && currentRow.getRowNum() == 0) {
+                    checkNameHeaderTableXLSX(row);
                 }
                 if (!cellIterator.hasNext() && currentRow.getRowNum() != 0) {
                     System.out.println();
@@ -73,11 +69,37 @@ public class Main {
         }
     }
 
-    private static void addErrorInFile(String s) {
+    private static void checkNameHeaderTableXLSX(List<String> nameHeadTable) {
+        String[] listNameHeads = {"TaskNum", "ImgCount", "ItemGroup", "ItemName",
+                "Color", "InteriorColor", "StartDate", "EndDate",
+                "Size", "MainImage", "ResultImage"};
+        listNameHeadsInMap = new HashMap<>();
+        for (int i = 0; i < listNameHeads.length; i++) {
+            listNameHeadsInMap.put(i, listNameHeads[i]);
+
+        }
+        System.out.println(listNameHeads.length + " = " + nameHeadTable.size());
+        if (listNameHeads.length != nameHeadTable.size()) {
+            addErrorInFile("количество столбцов в файле .xlsx не равно " + listNameHeads.length, true);
+            System.exit(0);
+        }
+        for (int i = 0; i < listNameHeads.length; i++) {
+            if (!listNameHeads[i].equals(nameHeadTable.get(i))) {
+                addErrorInFile("название столбцов в файле .xlsx не соответсвует требованиям.\n " +
+                        "\t Названия и порядок столбцов должны быть следующими: {\"TaskNum\", \"ImgCount\"," +
+                        "\"ItemGroup\", \"ItemName\",\n\t " +
+                        "\"Color\", \"InteriorColor\", \"StartDate\", \"EndDate\",\n\t " +
+                        "\"Size\", \"MainImage\", \"ResultImage\"}", true);
+                System.exit(0);
+            }
+        }
+    }
+
+    private static void addErrorInFile(String s, boolean status) {
         try {
-            FileWriter writer = new FileWriter(FILE_ERROR, true);
+            FileWriter writer = new FileWriter(FILE_ERROR, status);
             BufferedWriter bufferWriter = new BufferedWriter(writer);
-            bufferWriter.write(s + "\n");
+            bufferWriter.write("- " + s + "\n");
             bufferWriter.close();
         } catch (IOException e) {
             System.out.println(e);
@@ -85,15 +107,8 @@ public class Main {
     }
 
     private static void writeInDoc(List<String> row) throws IOException {
-       /* for (String f : row) {
-            System.out.println(f);
-        }*/
-//        for (int i = 1; i < row.size(); i++) {
-//            Template template = new Template();
-//            template.setImgCount(row.get(i));
-//        }
-        String in = "ChekFold/template.docx";
-        String out = "ChekFold/Служ_задание_Акт_" + row.get(1) + ".docx";
+        String in = "CheckFold/template.docx";
+        String out = "CheckFold/Служ_задание_Акт_" + row.get(1) + ".docx";
         InputStream is = new FileInputStream(in);
         OutputStream os = new FileOutputStream(out);
         byte[] buffer = new byte[1024];
@@ -109,8 +124,8 @@ public class Main {
                 List<XWPFRun> runs = p.getRuns();
                 if (runs != null) {
                     for (XWPFRun r : runs) {
-//                        System.out.println(runs);
-                        replaceString(doc, row, r);
+                        System.out.println(runs);
+                        replaceString(row, r);
                     }
                 }
             }
@@ -120,13 +135,13 @@ public class Main {
                     for (XWPFTableCell cell : xwpfTableRow.getTableCells()) {
                         for (XWPFParagraph p : cell.getParagraphs()) {
                             for (XWPFRun r : p.getRuns()) {
-                                replaceString(doc, row, r);
+                                replaceString(row, r);
                             }
                         }
                     }
                 }
             }
-            String out2 = "ChekFold/Служ_задание" + new Date() + ".docx";
+            String out2 = "CheckFold/Служ_задание" + new Date() + ".docx";
             FileOutputStream out3 = new FileOutputStream(out2);
             File file = new File(out2);
             doc.write(out3);
@@ -140,67 +155,26 @@ public class Main {
         }
     }
 
-    private static void replaceString(XWPFDocument doc, List<String> row, XWPFRun r) throws IOException {
-        String text = r.getText(0);
+    private static void replaceString(List<String> rowXLSX, XWPFRun paragrafDOCS) {
+        checkEmptyAndAddInDocs("&ImgCount", rowXLSX, paragrafDOCS);
+        checkEmptyAndAddInDocs("&ItemGroup", rowXLSX, paragrafDOCS);
+        checkEmptyAndAddInDocs("&ItemName", rowXLSX, paragrafDOCS);
+        checkEmptyAndAddInDocs("&Color", rowXLSX, paragrafDOCS);
+        checkEmptyAndAddInDocs("&InteriorColor", rowXLSX, paragrafDOCS);
+        checkEmptyAndAddInDocs("&StartDate", rowXLSX, paragrafDOCS);
+        checkEmptyAndAddInDocs("&EndDate", rowXLSX, paragrafDOCS);
+        checkEmptyAndAddInDocs("&Size", rowXLSX, paragrafDOCS);
+        //создание таблицы с изображениями:
+        String text = paragrafDOCS.getText(0);
         if (text != null) {
-            if (text.contains("&imgCount")) {
-                text = text.replace("&imgCount", row.get(1));
-                r.setText(text, 0);
-            }
-            if (text.contains("&itemGroup")) {
-                text = text.replace("&itemGroup", row.get(2));
-                r.setText(text, 0);
-            }
-            if (text.contains("&itemName")) {
-                text = text.replace("&itemName", row.get(3));
-                r.setText(text, 0);
-            }
-            if (text.contains("&color")) {
-                text = text.replace("&color", row.get(4));
-                r.setText(text, 0);
-            }
-            if (text.contains("&interiorColor")) {
-                text = text.replace("&interiorColor", row.get(5));
-                r.setText(text, 0);
-            }
-            if (text.contains("&startDate")) {
-                text = text.replace("&startDate", row.get(6));
-                r.setText(text, 0);
-            }
-            if (text.contains("&endDate")) {
-                text = text.replace("&endDate", row.get(7));
-                r.setText(text, 0);
-            }
-            if (text.contains("&size")) {
-                text = text.replace("&size", row.get(8));
-                r.setText(text, 0);
-            }
-            //создание таблицы с изображениями:
-            if (text.contains("&table")) {
-                text = text.replace("&table", "");
-                r.setText(text, 0);
-                Pattern pattern = Pattern.compile("\\d+");
-                Matcher matcher = pattern.matcher(row.get(1));
-                int imgNum = 0;
-                if (matcher.find()) {
-                    String value = matcher.group();
-                    imgNum = Integer.parseInt(value);
-                    //кол-во картинок
-                    System.out.println("кол-во картинок: " + imgNum);
-                }
-                String[] getImg = row.get(10).split(",");
-                imgNum = getImg.length;
+            if (text.contains("&Table")) {
+                text = text.replace("&Table", "");
+                paragrafDOCS.setText(text, 0);
+                String[] getImg = rowXLSX.get(10).split(",");
+                int imgNum = getImg.length;
                 System.out.println("число картинок: " + imgNum);
-//                String img = "ChekFold/images/1.jpg";
-//                String img = "ChekFold/images/" + getImg[0];
                 String img = "";
-//                InputStream pic = new FileInputStream(img);
-//                BufferedImage bi = ImageIO.read(new File(img));
                 int width = 100;
-               /* int height = bi.getHeight() / (bi.getWidth() / 100);
-                System.out.println(width + " : " + height);*/
-//                r.addBreak();
-//                XWPFTable tableX = doc.createTable();
                 int rowNum = imgNum / 5;
                 if (imgNum % 5 != 0) {
                     rowNum++;
@@ -208,41 +182,48 @@ public class Main {
                 rowNum++;
                 int k = 0;
                 for (int i = 0; i < rowNum; i++) {
-//                    XWPFTableRow rowX = tableX.getRow(i);
                     for (int j = 0; j < 4; j++) {
                         if (k <= imgNum) {
-                        System.out.println(k);
-//                        XWPFTableCell cellX = rowX.getCell(j);
-                        try {
-                            img = "ChekFold/images/" + getImg[k];
-                            InputStream pic = new FileInputStream(img);
-                            BufferedImage bi = ImageIO.read(new File(img));
-                            int height = bi.getHeight() / (bi.getWidth() / 100);
-                            System.out.println(width + " : " + height);
-//                            cellX.setText(i + "-" + j);
-                            r.addPicture(pic, XWPFDocument.PICTURE_TYPE_JPEG, img, Units.toEMU(width), Units.toEMU(height));
-                        } catch (Exception e) {
+                            System.out.println(k);
+                            try {
+                                img = "CheckFold/images/" + getImg[k];
+                                InputStream pic = new FileInputStream(img);
+                                BufferedImage bi = ImageIO.read(new File(img));
+                                int height = bi.getHeight() / (bi.getWidth() / 100);
+                                System.out.println(width + " : " + height);
+                                paragrafDOCS.addPicture(pic, XWPFDocument.PICTURE_TYPE_JPEG, img, Units.toEMU(width), Units.toEMU(height));
+                            } catch (Exception e) {
+                            }
+                            k++;
                         }
-                        if (i == 0 && j != 3)
-//                            rowX.createCell();
-                        k++;
-                        }
-                    }
-                    if (i != rowNum-1){
-//                        tableX.createRow(); //создание строки в таблице.
                     }
                 }
             }
         }
     }
 
-    private static void readDoc() {
-        try {
-            XWPFDocument docx = new XWPFDocument(new FileInputStream("/home/asya/Загрузки/Projects2020/ТЗ/Служ_задание_Акт_template.docx"));
-            XWPFWordExtractor we = new XWPFWordExtractor(docx);
-            System.out.println(we.getText());
-        } catch (IOException e) {
-            e.printStackTrace();
+    private static void checkEmptyAndAddInDocs(String variable, List<String> rowXLSX, XWPFRun paragrafDOCS) {
+        String text = paragrafDOCS.getText(0);
+        int key = 0;
+        if (text != null) {
+            if (text.contains(variable)) {
+                System.out.println(variable.substring(1));
+                System.out.println(listNameHeadsInMap.entrySet().toString());
+                Set<Map.Entry<Integer, String>> entrySet = listNameHeadsInMap.entrySet();
+                for (Map.Entry<Integer, String> pair : entrySet) {
+                    System.out.println("ddd " + pair.getValue() + " : " + pair.getKey());
+                    if (variable.substring(1).equals(pair.getValue())) {
+                        key = pair.getKey();// нашли наше значение и возвращаем  ключ
+                        System.out.println("key: " + key);
+                        break;
+                    }
+                }
+                System.out.println(text);
+                text = text.replace(variable, rowXLSX.get(key));
+                System.out.println(text);
+//                System.out.println("rowXLSX.get(key) " + variable + "  " + rowXLSX.get(key));
+                paragrafDOCS.setText(text, 0);
+            }
         }
     }
 }
