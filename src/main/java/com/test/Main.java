@@ -1,9 +1,6 @@
 package com.test;
 
-import org.apache.poi.hssf.usermodel.HSSFSheet;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.openxml4j.opc.OPCPackage;
-import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.util.Units;
@@ -23,25 +20,25 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Main {
-    static String FILE_ERROR = "TestFold/error.txt";
-
-
+    static String FILE_ERROR = "ChekFold/error.txt";
+    
     public static void main(String[] args) throws IOException {
         System.out.println("Program start!");
         readXLSX();
+
     }
 
- /*   private static String getCellName(Cell cell) {
+    private static String getCellName(Cell cell) {
         return CellReference.convertNumToColString(cell.getColumnIndex()) + (cell.getRowIndex() + 1);
-    }*/
+    }
 
     private static void readXLSX() throws IOException {
-        String path = "TestFold/data.xlsx";
+        String path = "ChekFold/data.xlsx";
         FileInputStream excelFile = null;
         try {
             excelFile = new FileInputStream(new File(path));
         } catch (FileNotFoundException e) {
-            addErrorInFile("Файл " + path + " не найден");
+            addErrorInFile("- Файл " + path + " не найден");
             e.printStackTrace();
         }
         XSSFWorkbook workbook = new XSSFWorkbook(excelFile);
@@ -56,6 +53,7 @@ public class Main {
             System.out.println(currentRow.getRowNum());
             while (cellIterator.hasNext()) {
                 Cell currentCell = (Cell) cellIterator.next();
+                System.out.println( "first: " + getCellName(currentCell));
                 if (currentCell.getCellType() == CellType.STRING) {
                     row.add(currentCell.getStringCellValue());
                     System.out.print(currentCell.getStringCellValue() + "--");
@@ -66,7 +64,7 @@ public class Main {
                 if (!cellIterator.hasNext() && currentRow.getRowNum() != 0) {
                     System.out.println();
                     System.out.println("массив:");
-                    System.out.println("тукущая строка " + currentRow.getRowNum());
+                    System.out.println("текущая строка " + currentRow.getRowNum());
                     System.out.println("Всего строк " + currentRow.getSheet().getLastRowNum());
                     writeInDoc(row);
                 }
@@ -81,8 +79,7 @@ public class Main {
             BufferedWriter bufferWriter = new BufferedWriter(writer);
             bufferWriter.write(s + "\n");
             bufferWriter.close();
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             System.out.println(e);
         }
     }
@@ -95,8 +92,8 @@ public class Main {
 //            Template template = new Template();
 //            template.setImgCount(row.get(i));
 //        }
-        String in = "TestFold/template.docx";
-        String out = "TestFold/Служ_задание_Акт_" + row.get(1) + ".docx";
+        String in = "ChekFold/template.docx";
+        String out = "ChekFold/Служ_задание_Акт_" + row.get(1) + ".docx";
         InputStream is = new FileInputStream(in);
         OutputStream os = new FileOutputStream(out);
         byte[] buffer = new byte[1024];
@@ -113,55 +110,7 @@ public class Main {
                 if (runs != null) {
                     for (XWPFRun r : runs) {
 //                        System.out.println(runs);
-                        replaceString(row, r);
-                        //создание таблицы с изображениями:
-                        String text = r.getText(0);
-                        if (text != null && text.contains("&table")) {
-                            text = text.replace("&table", "");
-                            r.setText(text, 0);
-//                            System.out.println("TABLE");
-                            String img = "TestFold/images/1.jpg";
-                            InputStream pic = new FileInputStream(img);
-                            BufferedImage bi = ImageIO.read(new File(img));
-                            Pattern pattern = Pattern.compile("\\d+");
-                            Matcher matcher = pattern.matcher(row.get(1));
-                            int imgNum = 1;
-                            if (matcher.find()) {
-                                String value = matcher.group();
-                                imgNum = Integer.parseInt(value);
-                                //кол-во картинок
-                                System.out.println("кол-во картинок: " + imgNum);
-                            }
-                            int width = 100;
-                            int height = bi.getHeight() / (bi.getWidth() / 100);
-                            System.out.println(width + " : " + height);
-                            r.addBreak();
-                            try {
-                                r.addPicture(pic, XWPFDocument.PICTURE_TYPE_JPEG, img, Units.toEMU(width), Units.toEMU(height));
-                            } catch (Exception e) {
-
-                            }
-                            XWPFTable tableX = doc.createTable();
-//                            int rowNum = imgNum / 6;
-//                            if (imgNum % 5 != 0) {
-//                                rowNum++;
-//                            }
-                            for (int i = 0; i < 3; i++) {
-                                XWPFTableRow rowX = tableX.getRow(i);
-                                for (int j = 0; j < 5; j++) {
-                                    XWPFTableCell cellX = rowX.getCell(j);
-                                    try {
-                                        cellX.setText(i + "-" + j);
-                                        r.addPicture(pic, XWPFDocument.PICTURE_TYPE_JPEG, img, Units.toEMU(width), Units.toEMU(height));
-                                    } catch (Exception e) {
-                                    }
-                                    if (i == 0 && j != 4)
-                                        rowX.createCell();
-                                }
-                                if (i != 2)
-                                    tableX.createRow(); //создание строки в таблице.
-                            }
-                        }
+                        replaceString(doc, row, r);
                     }
                 }
             }
@@ -171,13 +120,13 @@ public class Main {
                     for (XWPFTableCell cell : xwpfTableRow.getTableCells()) {
                         for (XWPFParagraph p : cell.getParagraphs()) {
                             for (XWPFRun r : p.getRuns()) {
-                                replaceString(row, r);
+                                replaceString(doc, row, r);
                             }
                         }
                     }
                 }
             }
-            String out2 = "TestFold/Служ_задание" + new Date() + ".docx";
+            String out2 = "ChekFold/Служ_задание" + new Date() + ".docx";
             FileOutputStream out3 = new FileOutputStream(out2);
             File file = new File(out2);
             doc.write(out3);
@@ -191,7 +140,7 @@ public class Main {
         }
     }
 
-    private static void replaceString(List<String> row, XWPFRun r) throws IOException {
+    private static void replaceString(XWPFDocument doc, List<String> row, XWPFRun r) throws IOException {
         String text = r.getText(0);
         if (text != null) {
             if (text.contains("&imgCount")) {
@@ -226,49 +175,63 @@ public class Main {
                 text = text.replace("&size", row.get(8));
                 r.setText(text, 0);
             }
-            if (text.contains("&imgs")) {
-       /* XWPFTable tableX = doc.createTable();//Создаю таблицу. Сразу создаётся XWPFTableRow и
-        //XWPFTableCell.
-        for (int i = 0; i < 8; i++) {
-            XWPFTableRow rowX = tableX.getRow(i); //Не создаю, а получаю уже существующую строку
-            for (int j = 0; j < 8; j++) {
-                XWPFTableCell cellX = rowX.getCell(j); //не создаю, а получаю уже имеющуюся строку
-                cellX.setText(i + "-" + j); //вставляю текст
-                if (i == 0 && j != 7)  //Создаю ячейки только в первой строке, и не создаю лишнюю ячейку в
-                    //конце строки.
-                    rowX.createCell();//создание ячейки в строке
-            }
-            if (i != 7) //не создаю лишнюю строку в конце таблицы
-                tableX.createRow(); //создание строки в таблице.
-        }*/
-                /*text = text.replace("&imgs", "");
+            //создание таблицы с изображениями:
+            if (text.contains("&table")) {
+                text = text.replace("&table", "");
                 r.setText(text, 0);
-                String img = "TestFold/images/1.jpg";
-                InputStream pic = new FileInputStream(img);
-                BufferedImage bi = ImageIO.read(new File(img));
-
                 Pattern pattern = Pattern.compile("\\d+");
                 Matcher matcher = pattern.matcher(row.get(1));
+                int imgNum = 0;
                 if (matcher.find()) {
                     String value = matcher.group();
-                    int result = Integer.parseInt(value);
-                    System.out.println(result);
+                    imgNum = Integer.parseInt(value);
+                    //кол-во картинок
+                    System.out.println("кол-во картинок: " + imgNum);
                 }
-//              int width   = bi.getWidth()/ Integer.parseInt(row.get(1).split("\\D+")[1]);
-//              int height   = bi.getHeight()/Integer.parseInt(row.get(1).split("\\D+")[1]);
+                String[] getImg = row.get(10).split(",");
+                imgNum = getImg.length;
+                System.out.println("число картинок: " + imgNum);
+//                String img = "ChekFold/images/1.jpg";
+//                String img = "ChekFold/images/" + getImg[0];
+                String img = "";
+//                InputStream pic = new FileInputStream(img);
+//                BufferedImage bi = ImageIO.read(new File(img));
                 int width = 100;
-                int height = bi.getHeight() / (bi.getWidth() / 100);
-                System.out.println(width + " : " + height);
-//                    byte [] picbytes = IOUtils.toByteArray(pic);
-                r.addBreak();
-                try {
-
-                    r.addPicture(pic, XWPFDocument.PICTURE_TYPE_JPEG, img, Units.toEMU(width), Units.toEMU(height));
-                } catch (Exception e) {
-
-                }*/
-//                    text = text.replace("&size", row.get(8));
-//                    r.setText(text, 0);
+               /* int height = bi.getHeight() / (bi.getWidth() / 100);
+                System.out.println(width + " : " + height);*/
+//                r.addBreak();
+//                XWPFTable tableX = doc.createTable();
+                int rowNum = imgNum / 5;
+                if (imgNum % 5 != 0) {
+                    rowNum++;
+                }
+                rowNum++;
+                int k = 0;
+                for (int i = 0; i < rowNum; i++) {
+//                    XWPFTableRow rowX = tableX.getRow(i);
+                    for (int j = 0; j < 4; j++) {
+                        if (k <= imgNum) {
+                        System.out.println(k);
+//                        XWPFTableCell cellX = rowX.getCell(j);
+                        try {
+                            img = "ChekFold/images/" + getImg[k];
+                            InputStream pic = new FileInputStream(img);
+                            BufferedImage bi = ImageIO.read(new File(img));
+                            int height = bi.getHeight() / (bi.getWidth() / 100);
+                            System.out.println(width + " : " + height);
+//                            cellX.setText(i + "-" + j);
+                            r.addPicture(pic, XWPFDocument.PICTURE_TYPE_JPEG, img, Units.toEMU(width), Units.toEMU(height));
+                        } catch (Exception e) {
+                        }
+                        if (i == 0 && j != 3)
+//                            rowX.createCell();
+                        k++;
+                        }
+                    }
+                    if (i != rowNum-1){
+//                        tableX.createRow(); //создание строки в таблице.
+                    }
+                }
             }
         }
     }
