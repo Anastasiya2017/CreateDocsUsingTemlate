@@ -1,5 +1,6 @@
 package com.test;
 
+import org.apache.commons.collections.list.AbstractLinkedList;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.util.Units;
@@ -15,6 +16,7 @@ import java.util.*;
 public class Main {
     static String FILE_ERROR = "CheckFold/error.txt";
     static Map<Integer, String> listNameHeadsInMap = new HashMap<>();
+    static Set<String> setNameHeads;
 
     public static void main(String[] args) throws IOException {
         System.out.println("Program start!");
@@ -28,7 +30,7 @@ public class Main {
         try {
             excelFile = new FileInputStream(new File(path));
         } catch (FileNotFoundException e) {
-            addErrorInFile("файл " + path + " не найден", true);
+            addErrorInFile("File " + path + " not found", true);
             e.printStackTrace();
             System.exit(0);
         }
@@ -62,6 +64,7 @@ public class Main {
         String[] listNameHeads = {"TaskNum", "ImgCount", "ItemGroup", "ItemName",
                 "Color", "InteriorColor", "StartDate", "EndDate",
                 "Size", "MainImage", "ResultImage"};
+        setNameHeads = new HashSet<>(Arrays.asList(listNameHeads));
         listNameHeadsInMap = new HashMap<>();
         for (int i = 0; i < listNameHeads.length; i++) {
             listNameHeadsInMap.put(i, listNameHeads[i]);
@@ -86,9 +89,9 @@ public class Main {
     private static void addErrorInFile(String s, boolean status) {
         try {
             FileWriter writer = new FileWriter(FILE_ERROR, status);
-            BufferedWriter bufferWriter = new BufferedWriter(writer);
-            bufferWriter.write("- " + s + "\n");
-            bufferWriter.close();
+//            BufferedWriter bufferWriter = new BufferedWriter(writer);
+            writer.write("- " + s + "\n");
+            writer.close();
         } catch (IOException e) {
             System.out.println(e);
         }
@@ -109,11 +112,12 @@ public class Main {
             is.close();
             os.close();
         } catch (Exception e) {
-            addErrorInFile("отсутствует шаблонный файл " + in, true);
+            addErrorInFile("file not found: " + in, true);
             e.printStackTrace();
             System.exit(0);
         }
         try {
+            System.out.print("-- ");
             XWPFDocument doc = new XWPFDocument(OPCPackage.open(out));
             for (XWPFParagraph p : doc.getParagraphs()) {
                 List<XWPFRun> runs = p.getRuns();
@@ -135,7 +139,7 @@ public class Main {
                     }
                 }
             }
-            String out2 = "CheckFold/result/" + new Date() + ".docx";
+            String out2 = "CheckFold/result/" + new Date().getTime() + ".docx";
             FileOutputStream out3 = new FileOutputStream(out2);
             File file = new File(out2);
             doc.write(out3);
@@ -144,6 +148,10 @@ public class Main {
             file.delete();
         } catch (Exception e) {
             e.printStackTrace();
+        }
+        if (!setNameHeads.isEmpty()) {
+            addErrorInFile(("not replace: " + setNameHeads.toString()), true);
+            System.out.println("не были заменены: " + setNameHeads.toString());
         }
     }
 
@@ -159,25 +167,28 @@ public class Main {
         //создание таблицы с изображениями:
         String text = paragrafDOCS.getText(0);
         if (text != null && text.contains("&MainImage")) {
+            setNameHeads.remove("MainImage");
             String img = "CheckFold/images/" + rowXLSX.get(9);
             try {
                 InputStream pic = new FileInputStream(img);
                 BufferedImage bi = ImageIO.read(new File(img));
                 int width = 300;
-                double height = (double) bi.getHeight() / ((double) bi.getWidth() / 300);
+                double height = (double) bi.getHeight() / ((double) bi.getWidth() / width);
                 text = text.replace("&MainImage", "");
                 paragrafDOCS.setText(text, 0);
                 paragrafDOCS.addPicture(pic, XWPFDocument.PICTURE_TYPE_JPEG, img, Units.toEMU(width), Units.toEMU(height));
             } catch (Exception e) {
-                e.printStackTrace();
-                addErrorInFile("файл с изображением " + img + " не был найден", true);
+                System.out.println("файл " + img + " не найден ");
+                addErrorInFile("file " + img + " not found ", true);
             }
         }
 
         if (text != null && text.contains("&Table")) {
+            setNameHeads.remove("ResultImage");
             text = text.replace("&Table", "");
             paragrafDOCS.setText(text, 0);
-            String[] getImg = rowXLSX.get(10).split(",");
+            String imgs = rowXLSX.get(10).replace(" ", "");
+            String[] getImg = imgs.split(",");
             int imgNum = getImg.length;
             String img = "";
             int width = 100;
@@ -189,16 +200,16 @@ public class Main {
             int k = 0;
             for (int i = 0; i < rowNum; i++) {
                 for (int j = 0; j < 4; j++) {
-                    if (k <= imgNum) {
+                    if (k < imgNum) {
                         try {
                             img = "CheckFold/images/" + getImg[k];
                             InputStream pic = new FileInputStream(img);
                             BufferedImage bi = ImageIO.read(new File(img));
-                            double height = bi.getHeight() / ((double) bi.getWidth() / 100);
+                            double height = bi.getHeight() / ((double) bi.getWidth() / width);
                             paragrafDOCS.addPicture(pic, XWPFDocument.PICTURE_TYPE_JPEG, img, Units.toEMU(width), Units.toEMU(height));
                         } catch (Exception e) {
-                            e.printStackTrace();
-                            addErrorInFile("файл с изображением " + img + " не был найден", true);
+                            System.out.println("Не найдены файл " + img);
+                            addErrorInFile("file " + img + " not found ", true);
                         }
                         k++;
                     }
@@ -212,6 +223,7 @@ public class Main {
         int key = 0;
         if (text != null) {
             if (text.contains(variable)) {
+                setNameHeads.remove(variable.substring(1));
                 Set<Map.Entry<Integer, String>> entrySet = listNameHeadsInMap.entrySet();
                 for (Map.Entry<Integer, String> pair : entrySet) {
                     if (variable.substring(1).equals(pair.getValue())) {

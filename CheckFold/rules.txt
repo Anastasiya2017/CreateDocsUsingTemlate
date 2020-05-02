@@ -1,11 +1,10 @@
 Структура:
-CheckFold
+-createDoc-1.0.jar
+-AvtoCreateDocx.exe
+-CheckFold
     -images
     -data.xlsx
-    -createDoc.jar
     -template.docx
-
-0.Расположение createDoc-1.0.jar в папке CheckFold
 
 1.Название файла с данными: data.xlsx
 
@@ -22,3 +21,7 @@ CheckFold
 
 6.В файле шаблоне template.docx должны быть указаны переменные, которые есть в data.xlsx и начинаться они должны с символа &.
 
+7.Когда вы запустите createDoc-1.0.jar (или AvtoCreateDocx.exe), то будет создана папка result с файлами docx.
+    Также получите файл с возможными ошибками error.txt
+    [если запускать файл createDoc-1.0.jar, то зайдите в командную строку/терминал - зайдите в папку,где находится
+    jar-ник и напишите команду: java -jar createDoc-1.0.jar]
