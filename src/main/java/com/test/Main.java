@@ -1,6 +1,5 @@
 package com.test;
 
-import org.apache.commons.collections.list.AbstractLinkedList;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.util.Units;
@@ -71,13 +70,13 @@ public class Main {
 
         }
         if (listNameHeads.length != nameHeadTable.size()) {
-            addErrorInFile("количество столбцов в файле .xlsx не равно " + listNameHeads.length, true);
+            addErrorInFile("the number of columns in the .xlsx file is not equal " + listNameHeads.length, true);
             System.exit(0);
         }
         for (int i = 0; i < listNameHeads.length; i++) {
             if (!listNameHeads[i].equals(nameHeadTable.get(i))) {
-                addErrorInFile("название столбцов в файле .xlsx не соответсвует требованиям.\n " +
-                        "\t Названия и порядок столбцов должны быть следующими: {\"TaskNum\", \"ImgCount\"," +
+                addErrorInFile("the name of the columns in the .xlsx file does not meet the requirements.\n " +
+                        "\t The names and order of the columns should be as follows: {\"TaskNum\", \"ImgCount\"," +
                         "\"ItemGroup\", \"ItemName\",\n\t " +
                         "\"Color\", \"InteriorColor\", \"StartDate\", \"EndDate\",\n\t " +
                         "\"Size\", \"MainImage\", \"ResultImage\"}", true);
@@ -89,7 +88,6 @@ public class Main {
     private static void addErrorInFile(String s, boolean status) {
         try {
             FileWriter writer = new FileWriter(FILE_ERROR, status);
-//            BufferedWriter bufferWriter = new BufferedWriter(writer);
             writer.write("- " + s + "\n");
             writer.close();
         } catch (IOException e) {
