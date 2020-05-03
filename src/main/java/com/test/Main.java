@@ -87,9 +87,10 @@ public class Main {
 
     private static void addErrorInFile(String s, boolean status) {
         try {
-            FileWriter writer = new FileWriter(FILE_ERROR, status);
-            writer.write("- " + s + "\n");
-            writer.close();
+            OutputStream os = new FileOutputStream(FILE_ERROR, status);
+            String str = "- " + s + "\n";
+            os.write( str.getBytes("Cp1251") );
+            os.close();
         } catch (IOException e) {
             System.out.println(e);
         }
